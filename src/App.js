@@ -33,6 +33,9 @@ export default function App() {
     // hook to store markers being placed
     const [markers, setMarkers] = useState([]);
 
+    // which popup shows
+    const [popShowing, setPopShowing] = useState();
+
     // initial state from database
     const dataSet = [];
 
@@ -41,7 +44,6 @@ export default function App() {
 
     // query markers and populate starting state
     const loadDb = () => {
-        console.log('fired');
         db.collection('markers')
             .get()
             .then((querySnapshot) => {
@@ -68,6 +70,7 @@ export default function App() {
             })
             .then(function (docRef) {
                 setMarkers((prev) => {
+                    setShowMarkers({ ...showMarkers, [docRef.id]: true });
                     return [
                         ...prev,
                         {
@@ -101,7 +104,6 @@ export default function App() {
             <button
                 onClick={() => {
                     setShowMarkers((prev) => !prev);
-                    console.log(markers);
                 }}
             >
                 {showMarkers ? 'Hide Markers' : 'Show Markers'}
@@ -130,6 +132,9 @@ export default function App() {
                             draggable={true}
                             offsetLeft={-8}
                             offsetTop={-10}
+                            onDragStart={() => {
+                                setPopShowing({});
+                            }}
                             onDragEnd={(event) => {
                                 let myList = markers.filter((cur) => {
                                     return marker.keyName !== cur.keyName;
@@ -156,24 +161,37 @@ export default function App() {
                         >
                             <IoIosWater
                                 style={!showMarkers && { display: 'none' }}
+                                onClick={() => {
+                                    if (popShowing === marker.keyName) {
+                                        setPopShowing();
+                                    } else {
+                                        setPopShowing(marker.keyName);
+                                    }
+                                }}
                             />
                         </Marker>
                     );
                 })}
+
                 {markers.map((marker) => {
                     return (
-                        <Popup
-                            latitude={marker.lat}
-                            longitude={marker.lng}
-                            key={marker.key + 'popup'}
-                            closeButton={true}
-                            closeOnClick={true}
-                            anchor="bottom"
-                            dynamicPosition={false}
-                            offsetTop={-13}
-                        >
-                            Testing
-                        </Popup>
+                        marker.keyName === popShowing && (
+                            <Popup
+                                latitude={marker.lat}
+                                longitude={marker.lng}
+                                key={marker.key + 'popup'}
+                                closeButton={true}
+                                closeOnClick={true}
+                                anchor="bottom"
+                                dynamicPosition={false}
+                                offsetTop={-13}
+                                onClose={() => {
+                                    setPopShowing({});
+                                }}
+                            >
+                                Testing
+                            </Popup>
+                        )
                     );
                 })}
             </ReactMapGl>
