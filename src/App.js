@@ -1,3 +1,10 @@
+import {
+    Editor,
+    EditingMode,
+    DrawLineStringMode,
+    DrawPolygonMode,
+} from 'react-map-gl-draw';
+
 // import react
 import React, { useState } from 'react';
 
@@ -11,6 +18,51 @@ import { IoIosWater } from 'react-icons/io';
 import fire from './firebase';
 
 export default function App() {
+    const [modeIdHook, setModeIdHook] = useState(null);
+
+    const [modeHandlerHook, setModeHandlerHook] = useState(null);
+
+    const MODES = [
+        {
+            id: 'drawPolyline',
+            text: 'Draw Polyline',
+            handler: DrawLineStringMode,
+        },
+        { id: 'drawPolygon', text: 'Draw Polygon', handler: DrawPolygonMode },
+        { id: 'editing', text: 'Edit Feature', handler: EditingMode },
+    ];
+
+    const switchMode = (e) => {
+        const modeId = e.target.value === modeIdHook ? null : e.target.value;
+        const mode = MODES.find((m) => m.id === modeId);
+        const modeHandler = mode ? new mode.handler() : null;
+
+        setModeIdHook(modeId);
+        setModeHandlerHook(modeHandler);
+    };
+
+    const renderToolbar = () => {
+        return (
+            <div
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    maxWidth: '320px',
+                }}
+            >
+                <select onChange={switchMode}>
+                    <option value="">--Please choose a draw mode--</option>
+                    {MODES.map((mode) => (
+                        <option key={mode.id} value={mode.id}>
+                            {mode.text}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        );
+    };
+
     // store map styles
     const normalView = 'mapbox://styles/kyleroehrs/ckimhjmvt13cp17oc1gkcrqrh';
     const streetView = 'mapbox://styles/kyleroehrs/ckimi49y22qmo17o4l9d9g80u';
@@ -34,7 +86,10 @@ export default function App() {
     const [markers, setMarkers] = useState([]);
 
     // which popup shows
-    const [popShowing, setPopShowing] = useState();
+    const [popShowing, setPopShowing] = useState({
+        popKey: '',
+        display: false,
+    });
 
     // initial state from database
     const dataSet = [];
@@ -62,20 +117,19 @@ export default function App() {
     };
 
     // post to database
-    const postToDb = (e) => {
+    const postToDb = (event) => {
         db.collection('markers')
             .add({
-                lng: e.lngLat[0],
-                lat: e.lngLat[1],
+                lng: event.lngLat[0],
+                lat: event.lngLat[1],
             })
             .then(function (docRef) {
                 setMarkers((prev) => {
-                    setShowMarkers({ ...showMarkers, [docRef.id]: true });
                     return [
                         ...prev,
                         {
-                            lng: e.lngLat[0],
-                            lat: e.lngLat[1],
+                            lng: event.lngLat[0],
+                            lat: event.lngLat[1],
                             key: docRef.id,
                             keyName: docRef.id,
                         },
@@ -132,9 +186,6 @@ export default function App() {
                             draggable={true}
                             offsetLeft={-8}
                             offsetTop={-10}
-                            onDragStart={() => {
-                                setPopShowing({});
-                            }}
                             onDragEnd={(event) => {
                                 let myList = markers.filter((cur) => {
                                     return marker.keyName !== cur.keyName;
@@ -157,15 +208,25 @@ export default function App() {
                                         lng: event.lngLat[0],
                                         lat: event.lngLat[1],
                                     });
+                                setPopShowing({
+                                    popKey: '',
+                                    display: false,
+                                });
                             }}
                         >
                             <IoIosWater
                                 style={!showMarkers && { display: 'none' }}
-                                onClick={() => {
-                                    if (popShowing === marker.keyName) {
-                                        setPopShowing();
+                                onDoubleClick={() => {
+                                    if (popShowing.popKey === marker.keyName) {
+                                        setPopShowing({
+                                            popKey: '',
+                                            display: false,
+                                        });
                                     } else {
-                                        setPopShowing(marker.keyName);
+                                        setPopShowing({
+                                            popKey: marker.keyName,
+                                            display: true,
+                                        });
                                     }
                                 }}
                             />
@@ -175,7 +236,8 @@ export default function App() {
 
                 {markers.map((marker) => {
                     return (
-                        marker.keyName === popShowing && (
+                        popShowing.display &&
+                        marker.keyName === popShowing.popKey && (
                             <Popup
                                 latitude={marker.lat}
                                 longitude={marker.lng}
@@ -194,75 +256,14 @@ export default function App() {
                         )
                     );
                 })}
+                <Editor
+                    // to make the lines/vertices easier to interact with
+                    clickRadius={12}
+                    mode={modeHandlerHook}
+                    onSelect={(_) => {}}
+                />
+                {renderToolbar()}
             </ReactMapGl>
         </div>
     );
 }
-
-// import {
-//     Editor,
-//     EditingMode,
-//     DrawLineStringMode,
-//     DrawPolygonMode,
-//     onUpdate,
-// } from 'react-map-gl-draw';
-
-//     const [modeIdHook, setModeIdHook] = useState(null);
-
-//     const [modeHandlerHook, setModeHandlerHook] = useState(null);
-
-//     const MODES = [
-//         {
-//             id: 'drawPolyline',
-//             text: 'Draw Polyline',
-//             handler: DrawLineStringMode,
-//         },
-//         { id: 'drawPolygon', text: 'Draw Polygon', handler: DrawPolygonMode },
-//         { id: 'editing', text: 'Edit Feature', handler: EditingMode },
-//     ];
-
-//     const switchMode = (e) => {
-//         const modeId = e.target.value === modeIdHook ? null : e.target.value;
-//         const mode = MODES.find((m) => m.id === modeId);
-//         const modeHandler = mode ? new mode.handler() : null;
-
-//         setModeIdHook(modeId);
-//         setModeHandlerHook(modeHandler);
-//     };
-
-//     const renderToolbar = () => {
-//         return (
-//             <div
-//                 style={{
-//                     position: 'absolute',
-//                     top: 0,
-//                     right: 0,
-//                     maxWidth: '320px',
-//                 }}
-//             >
-//                 <select onChange={switchMode}>
-//                     <option value="">--Please choose a draw mode--</option>
-//                     {MODES.map((mode) => (
-//                         <option key={mode.id} value={mode.id}>
-//                             {mode.text}
-//                         </option>
-//                     ))}
-//                 </select>
-//             </div>
-//         );
-//     };
-
-//     return (
-//
-
-//                 <Editor
-//                     // to make the lines/vertices easier to interact with
-//                     clickRadius={12}
-//                     mode={modeHandlerHook}
-//                     onSelect={(_) => {}}
-//                 />
-//                 {renderToolbar()}
-//             </ReactMapGl>
-//         </div>
-//     );
-// }
