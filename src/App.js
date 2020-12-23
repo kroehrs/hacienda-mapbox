@@ -85,11 +85,10 @@ export default function App() {
     // hook to store markers being placed
     const [markers, setMarkers] = useState([]);
 
+    const [drag, setDrag] = useState(false);
+
     // which popup shows
-    const [popShowing, setPopShowing] = useState({
-        popKey: '',
-        display: false,
-    });
+    const [popShowing, setPopShowing] = useState('');
 
     // initial state from database
     const dataSet = [];
@@ -186,6 +185,7 @@ export default function App() {
                             draggable={true}
                             offsetLeft={-8}
                             offsetTop={-10}
+                            onDragStart={() => setDrag(true)}
                             onDragEnd={(event) => {
                                 let myList = markers.filter((cur) => {
                                     return marker.keyName !== cur.keyName;
@@ -216,17 +216,15 @@ export default function App() {
                         >
                             <IoIosWater
                                 style={!showMarkers && { display: 'none' }}
-                                onDoubleClick={() => {
-                                    if (popShowing.popKey === marker.keyName) {
-                                        setPopShowing({
-                                            popKey: '',
-                                            display: false,
-                                        });
+                                onClick={() => {
+                                    if (drag) {
+                                        setDrag(false);
+                                        return;
+                                    }
+                                    if (popShowing === marker.keyName) {
+                                        setPopShowing('');
                                     } else {
-                                        setPopShowing({
-                                            popKey: marker.keyName,
-                                            display: true,
-                                        });
+                                        setPopShowing(marker.keyName);
                                     }
                                 }}
                             />
@@ -236,8 +234,8 @@ export default function App() {
 
                 {markers.map((marker) => {
                     return (
-                        popShowing.display &&
-                        marker.keyName === popShowing.popKey && (
+                        !drag &&
+                        marker.keyName === popShowing && (
                             <Popup
                                 latitude={marker.lat}
                                 longitude={marker.lng}
