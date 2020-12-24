@@ -1,15 +1,15 @@
+// import react
+import React, { useState } from 'react';
+
+// import mapbox react library
+import ReactMapGl, { Marker, Popup } from 'react-map-gl';
+
 import {
     Editor,
     EditingMode,
     DrawLineStringMode,
     DrawPolygonMode,
 } from 'react-map-gl-draw';
-
-// import react
-import React, { useState } from 'react';
-
-// import mapbox react library
-import ReactMapGl, { Marker, Popup } from 'react-map-gl';
 
 // import water icon
 import { IoIosWater } from 'react-icons/io';
@@ -97,47 +97,74 @@ export default function App() {
     const db = fire.firestore();
 
     // query markers and populate starting state
-    const loadDb = () => {
-        db.collection('markers')
-            .get()
-            .then((querySnapshot) => {
-                querySnapshot.forEach((doc) => {
-                    dataSet.push({
-                        lng: doc.data().lng,
-                        lat: doc.data().lat,
-                        key: doc.id,
-                        keyName: doc.id,
-                    });
-                });
-            })
-            .then(() => {
-                setMarkers(dataSet);
+    const loadDb = async () => {
+        const dbMarkers = await db.collection('markers').get();
+
+        dbMarkers.forEach((doc) => {
+            dataSet.push({
+                lng: doc.data().lng,
+                lat: doc.data().lat,
+                key: doc.id,
+                keyName: doc.id,
             });
+        });
+
+        setMarkers(dataSet);
     };
 
     // post to database
-    const postToDb = (event) => {
-        db.collection('markers')
-            .add({
-                lng: event.lngLat[0],
-                lat: event.lngLat[1],
-            })
-            .then(function (docRef) {
-                setMarkers((prev) => {
-                    return [
-                        ...prev,
-                        {
-                            lng: event.lngLat[0],
-                            lat: event.lngLat[1],
-                            key: docRef.id,
-                            keyName: docRef.id,
-                        },
-                    ];
-                });
-            })
-            .catch(function (error) {
-                console.error('Error adding document: ', error);
-            });
+    const postToDb = async (event) => {
+        const docRef = await db.collection('markers').add({
+            lng: event.lngLat[0],
+            lat: event.lngLat[1],
+        });
+
+        setMarkers((prev) => {
+            return [
+                ...prev,
+                {
+                    lng: event.lngLat[0],
+                    lat: event.lngLat[1],
+                    key: docRef.id,
+                    keyName: docRef.id,
+                },
+            ];
+        });
+    };
+
+    const dragEndHandler = (event, marker) => {
+        let myList = markers.filter((cur) => {
+            return marker.keyName !== cur.keyName;
+        });
+        setMarkers(() => {
+            return [
+                ...myList,
+                {
+                    lng: event.lngLat[0],
+                    lat: event.lngLat[1],
+                    key: marker.keyName,
+                    keyName: marker.keyName,
+                },
+            ];
+        });
+
+        db.collection('markers').doc(marker.keyName).set({
+            lng: event.lngLat[0],
+            lat: event.lngLat[1],
+        });
+        setPopShowing('');
+    };
+
+    const iconClickHandler = (marker) => {
+        if (drag) {
+            setDrag(false);
+            return;
+        }
+        if (popShowing === marker.keyName) {
+            setPopShowing('');
+        } else {
+            setPopShowing(marker.keyName);
+        }
     };
 
     return (
@@ -168,10 +195,10 @@ export default function App() {
                     loadDb();
                 }}
                 onViewportChange={(nextViewport) => setViewport(nextViewport)}
-                mapboxApiAccessToken="pk.eyJ1Ijoia3lsZXJvZWhycyIsImEiOiJja2hmbXl0bGYwMHF0Mndxazg0MjZ0aHhmIn0.jjFVj0sjEYtpHijUGRxcUw"
+                mapboxApiAccessToken={process.env.REACT_APP_MAPBOX_TOKEN}
                 mapStyle={mapStyle}
-                onClick={(e) => {
-                    postToDb(e);
+                onClick={(event) => {
+                    postToDb(event);
                 }}
             >
                 {/* map markers to the dom, hides them when hide button clicked */}
@@ -187,45 +214,13 @@ export default function App() {
                             offsetTop={-10}
                             onDragStart={() => setDrag(true)}
                             onDragEnd={(event) => {
-                                let myList = markers.filter((cur) => {
-                                    return marker.keyName !== cur.keyName;
-                                });
-                                setMarkers(() => {
-                                    return [
-                                        ...myList,
-                                        {
-                                            lng: event.lngLat[0],
-                                            lat: event.lngLat[1],
-                                            key: marker.keyName,
-                                            keyName: marker.keyName,
-                                        },
-                                    ];
-                                });
-
-                                db.collection('markers')
-                                    .doc(marker.keyName)
-                                    .set({
-                                        lng: event.lngLat[0],
-                                        lat: event.lngLat[1],
-                                    });
-                                setPopShowing({
-                                    popKey: '',
-                                    display: false,
-                                });
+                                dragEndHandler(event, marker);
                             }}
                         >
                             <IoIosWater
                                 style={!showMarkers && { display: 'none' }}
                                 onClick={() => {
-                                    if (drag) {
-                                        setDrag(false);
-                                        return;
-                                    }
-                                    if (popShowing === marker.keyName) {
-                                        setPopShowing('');
-                                    } else {
-                                        setPopShowing(marker.keyName);
-                                    }
+                                    iconClickHandler(marker);
                                 }}
                             />
                         </Marker>
