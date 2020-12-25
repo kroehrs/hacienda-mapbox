@@ -18,6 +18,12 @@ import { IoIosWater } from 'react-icons/io';
 import fire from './firebase';
 
 export default function App() {
+    const handleUpdate = (val) => {
+        setFeatures(val.data);
+    };
+
+    const [features, setFeatures] = useState([]);
+
     const [modeIdHook, setModeIdHook] = useState(null);
 
     const [modeHandlerHook, setModeHandlerHook] = useState(null);
@@ -253,8 +259,10 @@ export default function App() {
                     // to make the lines/vertices easier to interact with
                     clickRadius={12}
                     mode={modeHandlerHook}
-                    onSelect={(_) => {}}
+                    onUpdate={handleUpdate}
+                    features={features}
                 />
+
                 {renderToolbar()}
             </ReactMapGl>
         </div>
