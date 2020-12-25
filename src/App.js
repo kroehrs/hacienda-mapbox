@@ -19,6 +19,7 @@ import fire from './firebase';
 
 export default function App() {
     const handleUpdate = (val) => {
+        console.log(val);
         setFeatures(val.data);
     };
 
@@ -116,6 +117,32 @@ export default function App() {
         });
 
         setMarkers(dataSet);
+
+        const dbFeatures = await db.collection('features').get();
+
+        let typeName;
+        let newArr;
+
+        dbFeatures.forEach((doc) => {
+            const feature = doc.data();
+
+            newArr = feature.geometry.coordinates.map((cur) => {
+                return [cur.N_, cur.x_];
+            });
+
+            typeName = feature.geometry.type;
+        });
+
+        setFeatures([
+            {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: typeName,
+                    coordinates: [newArr],
+                },
+            },
+        ]);
     };
 
     // post to database
@@ -190,6 +217,7 @@ export default function App() {
             <button
                 onClick={() => {
                     setShowMarkers((prev) => !prev);
+                    console.dir(features);
                 }}
             >
                 {showMarkers ? 'Hide Markers' : 'Show Markers'}
@@ -203,9 +231,9 @@ export default function App() {
                 onViewportChange={(nextViewport) => setViewport(nextViewport)}
                 mapboxApiAccessToken={process.env.REACT_APP_MAPBOX_TOKEN}
                 mapStyle={mapStyle}
-                onClick={(event) => {
-                    postToDb(event);
-                }}
+                // onClick={(event) => {
+                //     postToDb(event);
+                // }}
             >
                 {/* map markers to the dom, hides them when hide button clicked */}
                 {markers.map((marker) => {
@@ -259,7 +287,9 @@ export default function App() {
                     // to make the lines/vertices easier to interact with
                     clickRadius={12}
                     mode={modeHandlerHook}
-                    onUpdate={handleUpdate}
+                    onUpdate={(e) => {
+                        handleUpdate(e);
+                    }}
                     features={features}
                 />
 
