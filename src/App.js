@@ -18,8 +18,8 @@ import { IoIosWater } from 'react-icons/io';
 import fire from './firebase';
 
 export default function App() {
-    const handleUpdate = (val) => {
-        console.log(val);
+    const handleEditorUpdate = (val) => {
+        console.log(val.data);
         setFeatures(val.data);
     };
 
@@ -146,7 +146,7 @@ export default function App() {
     };
 
     // post to database
-    const postToDb = async (event) => {
+    const postMarkersToDb = async (event) => {
         const docRef = await db.collection('markers').add({
             lng: event.lngLat[0],
             lat: event.lngLat[1],
@@ -231,9 +231,9 @@ export default function App() {
                 onViewportChange={(nextViewport) => setViewport(nextViewport)}
                 mapboxApiAccessToken={process.env.REACT_APP_MAPBOX_TOKEN}
                 mapStyle={mapStyle}
-                // onClick={(event) => {
-                //     postToDb(event);
-                // }}
+                onClick={(event) => {
+                    postMarkersToDb(event);
+                }}
             >
                 {/* map markers to the dom, hides them when hide button clicked */}
                 {markers.map((marker) => {
@@ -288,7 +288,7 @@ export default function App() {
                     clickRadius={12}
                     mode={modeHandlerHook}
                     onUpdate={(e) => {
-                        handleUpdate(e);
+                        handleEditorUpdate(e);
                     }}
                     features={features}
                 />
